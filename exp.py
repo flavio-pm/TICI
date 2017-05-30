@@ -2,11 +2,11 @@ import sys
 import auxlib
 from time import sleep
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QIcon, QFont, QColor
+from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from qtRangeSlider import QHSpinBoxRangeSlider
 
-#Parámetros globales ;;
+#Parámetros globales (¿será muy peligroso esto?)
 G_cont = None  # Tipo de contenedor
 G_PVI = "0"  # Rango inferior de porcentaje volumétrico
 G_PVS = "0"  # Rango superior de porcentaje volumétrico
@@ -16,8 +16,9 @@ G_base = 0  # Área basal
 G_altura = 0  # Altura
 G_techo = 0  # Área del techo
 
-# Actualmente trabajando en: subventana de parámetros
-# Pendientes: subventanas de display, alertas, meter los cálculos y vínculos a Arduino, estilizar
+# Actualmente trabajando en: subventana de parámetros, marcado y desmarcado de botones
+# Pendientes: subventanas de display, botones de flujo de datos, meter los
+#             cálculos y vínculos a Arduino, estilizar
 
 # Thread para conectar el software principal con nuestra interfaz gráfica
 class Thread(QThread):
@@ -163,31 +164,34 @@ class Grafica(QWidget):
         bflujo = []  # b_nombre arreglo de acceso a cada botón
         mflujo.addStretch(1)
         for flujo in nflujo:
-            aux = QPushButton(flujo)  # Hacer el botón
-            mflujo.addWidget(aux)  # Agregarlo a la cuadrícula
-            bflujo.append(aux)  # Arreglo de acceso
+            aux = QPushButton(flujo)    # Hacer el botón
+            mflujo.addWidget(aux)       # Agregarlo a la cuadrícula
+            bflujo.append(aux)          # Arreglo de acceso
             mflujo.addStretch(0)
         mflujo.addStretch(1)
 
         mbotones.addLayout(mflujo)
         mbotones.addStretch(2)
         nbotones = ['Fijar\nParámetros', 'Monitorear\nMediciones', 'Ver Historial\nde Mediciones', 'Panel de \nAlertas']
-        bbotones = []
+        self.bbotones = []
         for boton in nbotones:
-            aux = QPushButton(boton)
-            mbotones.addWidget(aux)
+            aux = QPushButton(boton)    # Hacer el botón
+            mbotones.addWidget(aux)     # Agregarlo a la cuadrícula
             mbotones.addStretch(1)
-            bbotones.append(aux)
+            self.bbotones.append(aux)        # Arreglo de acceso
         mbotones.addStretch(1)
 
-        bbotones[0].setCheckable(True)
-        if self.definido:
-            bbotones[1].setCheckable(True)
-            bbotones[2].setCheckable(True)
-            bbotones[3].setCheckable(True)
+        self.bbotones[0].setCheckable(True)
+        # if self.definido:
+        self.bbotones[1].setCheckable(True)
+        self.bbotones[2].setCheckable(True)
+        self.bbotones[3].setCheckable(True)
 
         #Conectar el slot para mostrar SVPARAMETROS al botón
-        bbotones[0].clicked.connect(self.mostrar_svparametros)
+        self.bbotones[0].clicked.connect(self.mostrar_svparametros)
+#        self.bbotones[1].clicked.connect(self.mostrar_svinterpretacion)
+#        self.bbotones[2].clicked.connect(self.mostrar_svhistorial)
+#        self.bbotones[3].clicked.connect(self.mostrar_svalertas)
 
         mprincipal.addLayout(mbotones)
         mprincipal.addStretch(1)
@@ -201,9 +205,38 @@ class Grafica(QWidget):
         #Crear svparametros
         self.sv = SVParametros()
 
+        #¿Servirá?
+        mprincipal.addWidget(self.sv)
+        self.sv.hide()
+
         #Slot para mostrar svparametros
-    def mostrar_svparametros(self):
-        self.sv.show()
+    def mostrar_svparametros(self, pressed):
+        if pressed:
+            self.sv.show()
+#            self.desmarcar(0)
+        else:
+            self.sv.hide()
+"""
+    def mostrar_svinterpretacion(self, pressed):
+        if pressed:
+            self.desmarcar(1)
+
+    def mostrar_svhistorial(self, pressed):
+        if pressed:
+            self.desmarcar(2)
+
+    def mostrar_svalertas(self, pressed):
+        if pressed:
+            self.desmarcar(3)
+
+    def desmarcar(self, excepcion):
+        for i in range(0, 4) :
+            if i != excepcion :
+                if self.bbotones[i].ischecked() :
+                    self.bbotones[i].setchecked(False)
+                else :
+                    continue
+"""
 
 # Subventana de parámetros
 class SVParametros(QWidget):
@@ -213,9 +246,13 @@ class SVParametros(QWidget):
 
     def initUI(self):
         layout = QVBoxLayout()
+        layout.addStretch(2)
 
         # lista dropdown de contenedores
         LDcont = QComboBox()
+        nombrecont = QLabel("Tipo de contenedor:")
+        layout.addWidget(nombrecont)
+        layout.addStretch(1)
         layout.addWidget(LDcont)
         LDcont.addItem(None)
         LDcont.addItem("Cúbico")
@@ -223,68 +260,113 @@ class SVParametros(QWidget):
         LDcont.activated[str].connect(self.LDpick)
 
         # Slider Temperatura
-        # Falta la label
         SliderT = QHSpinBoxRangeSlider([-25, 125, 0.1], [0, 15])
+        nombreT = QLabel("Rango de Temperatura:")
+        layout.addWidget(nombreT)
+        layout.addStretch(1)
         layout.addWidget(SliderT)
         SliderT.setEmitWhileMoving(False)
         # Falta activarlo pero no he descubierto como y la documentacion de la otra clase no me ayura
 
         # Slider Porcentaje Volumen
-        # Falta la label
         SliderV = QHSpinBoxRangeSlider([0, 100, 0.1], [5, 15])
+        nombreV = QLabel("Rango de Volumen:")
+        layout.addWidget(nombreV)
+        layout.addStretch(1)
         layout.addWidget(SliderV)
         SliderT.setEmitWhileMoving(False)
         # Falta activarlo
 
         # Textboxes para base y altura del contenedor
-        # Falta la label
         TextBoxBase = QLineEdit()
-        layout.addWidget(TextBoxBase)
-        TextBoxBase.setInputMask('9')   #Debe recibir números de hasta 4 cifras enteras y 2 cifras decimales
-        # Label que diga "cm^2"
+        nombrebase = QLabel("Área basal del contenedor:")
+        layout.addWidget(nombrebase)
+        layout.addStretch(1)
+        rotuladorbase = QHBoxLayout()
+        rotuladorbase.addStretch(1)
+        rotuladorbase.addWidget(TextBoxBase)
+        TextBoxBase.setInputMask('0000')   #Debe recibir números de hasta 4 cifras enteras y 2 cifras decimales
+        medidabase = QLabel("cm^2")
+        rotuladorbase.addStretch(0)
+        rotuladorbase.addWidget(medidabase)
+        rotuladorbase.addStretch(1)
+        layout.addLayout(rotuladorbase)
         TextBoxBase.textChanged[str].connect(self.TBBchanged)
 
-        # Falta la label
         TextBoxAltura = QLineEdit()
-        layout.addWidget(TextBoxAltura)
-        TextBoxBase.setInputMask('9')  # Debe recibir números de hasta 4 cifras enteras y 2 cifras decimales
-        # Label que diga "cm"
+        nombrealtura = QLabel("Altura del contenedor:")
+        layout.addWidget(nombrealtura)
+        layout.addStretch(1)
+        rotuladoraltura = QHBoxLayout()
+        rotuladoraltura.addStretch(1)
+        rotuladoraltura.addWidget(TextBoxAltura)
+        TextBoxAltura.setInputMask('0000')   #Debe recibir números de hasta 4 cifras enteras y 2 cifras decimales
+        medidaaltura = QLabel("cm")
+        rotuladoraltura.addStretch(0)
+        rotuladoraltura.addWidget(medidaaltura)
+        rotuladoraltura.addStretch(1)
+        layout.addLayout(rotuladoraltura)
         TextBoxBase.textChanged[str].connect(self.TBAchanged)
 
         # Checkbox y Textbox para el techo del contenedor
-        # Falta la label
-        CheckBoxTecho = QCheckBox('¿Es el techo del contenedor de área distinta a su base?')
-        # Falta la label
-        TextBoxTecho = QLineEdit()
-        layout.addWidget(CheckBoxTecho)
-        layout.addWidget(TextBoxTecho)
-        # Falta hacer que el checkbox sirva de algo
-        TextBoxTecho.setInputMask('9')
-        # Label que diga "cm"
-        TextBoxBase.textChanged[str].connect(self.TBTchanged)
+        self.CheckBoxTecho = QCheckBox('¿Es el techo del contenedor de área distinta a su base?')
+        layout.addWidget(self.CheckBoxTecho)
 
+        self.framelayout = QWidget()
+        layoutframe = QVBoxLayout()
+        rotuladorframe = QHBoxLayout()
+        rotuladorframe.addStretch(1)
+        nombretecho = QLabel("Área del techo del contenedor")
+        layoutframe.addWidget(nombretecho)
+        layoutframe.addStretch(0)
+        TextBoxTecho = QLineEdit()
+        TextBoxTecho.setInputMask('9')
+        rotuladorframe.addWidget(TextBoxTecho)
+        rotuladorframe.addStretch(0)
+        medidatecho = QLabel("cm^2")
+        rotuladorframe.addWidget(medidatecho)
+        rotuladorframe.addStretch(1)
+        TextBoxBase.textChanged[str].connect(self.TBTchanged)
+        self.CheckBoxTecho.stateChanged.connect(self.CBTchanged)
+        layoutframe.addLayout(rotuladorframe)
+        self.framelayout.setLayout(layoutframe)
+        layout.addWidget(self.framelayout)
+        layout.addStretch(1)
+        self.framelayout.hide()
+
+        # Texto útil
+        self.util = QLabel("")
+        layout.addWidget(self.util)
+        layout.addStretch(2)
         self.setLayout(layout)
 
     def LDpick(self, pick):
         global G_cont
         G_cont = pick
-        # Falta comportamiento del label, si hace falta
+        self.util.setText("Tipo de contenedor actualizado a " + G_cont)
 
     def TBAchanged(self, valor):
         global G_altura
         G_altura = float(valor)
-        # Falta comportamiento del label, si hace falta
+        self.util.setText("Altura actualizada a " + str(G_altura))
 
     def TBBchanged(self, valor):
         global G_base, G_techo
         G_base = float(valor)
-        # Falta comportamiento del label, si hace falta
+        if self.CheckBoxTecho.isChecked() :
+            G_techo = G_base
+        self.util.setText("Área basal actualizada a " + str(G_base))
 
     def TBTchanged(self, valor):
         global G_techo
         G_techo = float(valor)
-        # Falta comportamiento del label, si hace falta, y probablemente bools para el comportamiento
-        # cuando G_techo es distinto a G_base
+        self.util.setText("Área superior actualizada a " + str(G_techo))
+
+    def CBTchanged(self, state):
+        if state == Qt.Checked:
+            self.framelayout.show()
+        else:
+            self.framelayout.hide()
 
 
 if __name__ == '__main__':
@@ -296,4 +378,4 @@ if __name__ == '__main__':
     thr.set_temp_label(ex.Graf.tempLabel)
     thr.set_flux_label(ex.Graf.fluxLabel)
     thr.start()
-    sys.exit(app.exec_())
+sys.exit(app.exec_())
